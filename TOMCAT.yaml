@@ -1,0 +1,22 @@
+--- #Playbook for the tomcat installation
+- hosts: centos
+  remote_user: ansible
+  become: yes
+  become_method: sudo
+  gather_facts: yes
+  connection: ssh
+
+
+  #vars:
+  # principal: "{{ the_principal }}"
+
+  vars_prompt:
+  - name: "principal"
+    prompt: "What version do you want? (7.0,7.5,8.0,8.5)"
+    default: "8.5"
+
+  roles:
+    - jdk
+    - tomcat
+
+  

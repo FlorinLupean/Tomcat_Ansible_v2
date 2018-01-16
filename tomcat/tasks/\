@@ -1,0 +1,59 @@
+---
+- name: Create TOMCAT directory
+  command: mkdir -p /opt/tomcat
+
+- name: Create TOMCAT group
+  group:
+    name: tomcat
+    state: present
+
+- name: Create TOMCAT user
+  user: 
+    name: tomcat
+    group: tomcat
+    shell: /bin/false
+    home: /opt/tomcat
+
+- name: Get the entire name
+  shell: 'curl -s http://svn.apache.org/repos/asf/tomcat/site/trunk/docs/doap_Tomcat.rdf | grep -A2 "Latest Stable {{ principal }}" | cut -f2 -d ">" | cut -f1 -d "<" | tail -1'
+  register:  entire 
+- debug: msg={{ entire.stdout }}
+
+- name: Get the prime name
+  shell: 'curl -s http://svn.apache.org/repos/asf/tomcat/site/trunk/docs/doap_Tomcat.rdf | grep -A2 "Latest Stable {{ principal }}" | cut -d">" -f2 |cut -d"." -f1 | tail -1'
+  register:  prime 
+- debug: msg={{ prime.stdout }}
+
+- name: Download TOMCAT archive
+  get_url:
+          # url: "http://mirror.evowise.com/apache/tomcat/tomcat-{{ prime.stdout }}/v{{ entire.stdout }}/bin/apache-tomcat-{{ entire.stdout }}.tar.gz"
+    url: "https://archive.apache.org/dist/tomcat/tomcat-{{ prime.stdout }}/v{{ entire.stdout }}/bin/apache-tomcat-{{ entire.stdout }}.tar.gz"
+    dest: /tmp/apache-tomcat.tar.gz
+
+- name: Extract TOMCAT archive
+  unarchive:
+    src: /tmp/apache-tomcat.tar.gz
+    dest: /opt/tomcat
+    copy: no
+
+- name: Set permissions to TOMCAT folders/files
+  command: chgrp -R tomcat /opt/tomcat
+
+- name: Modify permissions on conf file in TOMCAT
+  command: chmod -R g+rx,u+rx /opt/tomcat
+  # file:
+  # path: /opt/tomcat/apache-tomcat-8.5.24/conf
+  # mode: "g+r,g+x"
+
+- name: Copy tomcat.service file
+  copy:
+    src: tomcat.service
+    dest: /etc/systemd/system/tomcat.service
+    owner: tomcat
+    group: tomcat
+
+- name: Run the DAEMON command
+  command: systemctl daemon-reload
+  notify: 
+    - start TOMCAT
+

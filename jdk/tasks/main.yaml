@@ -1,0 +1,59 @@
+---
+- name: Create Java directory
+  command: 'mkdir -p /usr/java'
+
+- name: Get the Java download link
+  shell: 'curl -s https://java.com/en/download/linux_manual.jsp | grep "Download Java software for Linux x64" | cut -d "\"" -f 4 | head -1'
+  register: url_download
+- debug: msg={{ url_download.stdout }}
+
+- name: Get the Prime version
+  shell: 'curl -s https://java.com/en/download/linux_manual.jsp | grep "Version" | cut -f4 -d " " | head -1'
+  register: prime
+- debug: msg={{ prime.stdout }}
+
+- name: Get the Entire version
+  shell: 'curl -s https://java.com/en/download/linux_manual.jsp | grep "Version" | cut -f6 -d " " | cut -f1 -d "<" | head -1'
+  register: entire
+- debug: msg={{ entire.stdout }}
+
+- name: Download Java archive
+  get_url:
+          #url: "http://download.oracle.com/otn-pub/java/jdk/8u151-b12/e758a0de34e24606bca991d704f6dcbf/jdk-8u151-linux-x64.tar.gz"
+    url: "{{ url_download.stdout }}"
+    headers: 'Cookie:oraclelicense=accept-securebackup-cookie'
+    dest: /opt/java.tar.gz
+
+- name: Extract Java tar to /usr/java
+  unarchive:
+    src: /opt/java.tar.gz
+    dest: /usr/java
+    copy: no
+
+- name: Go Java latest directory
+  shell: 'ls -1t /usr/java | head -1'
+  register: dir_name
+- debug: msg={{ dir_name.stdout }}
+
+- name: Rename the Java directory
+  shell: 'mv /usr/java/{{ dir_name.stdout }} /usr/java/java{{ prime.stdout }}_{{ entire.stdout }}'
+
+- name: Make JAVA an alternative with highest priority
+  alternatives:
+    name: java
+    #path: /usr/java/jdk1.8.0_151/bin/java
+    path: /usr/java/java{{ prime.stdout }}_{{ entire.stdout }}/bin/java
+    link: /usr/bin/java
+    priority: 20000
+- name: Set the installed JAVA as default    
+  command: update-alternatives --auto java
+
+- name: Make JAVAC an alternative with highest priority
+  alternatives:
+    name: javac
+    #path: /usr/java/jdk1.8.0_151/bin/javac
+    path: /usr/java/java{{ prime.stdout }}_{{ entire.stdout }}/bin/javac
+    link: /usr/bin/javac
+    priority: 20000
+- name: Set the installed JAVAC as default
+  command: update-alternatives --auto javac
